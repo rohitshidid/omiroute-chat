@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+#
+# Claude-OmniRoute — open a Claude Code session backed by the OmniRoute gateway.
+#
+#   Claude-OmniRoute                      pick a live model automatically
+#   Claude-OmniRoute aug/opus4.8          force a specific model
+#   Claude-OmniRoute -p "explain this"    any other args pass through to claude
+#
+# Only this session is affected. Plain `claude` still uses your Anthropic account.
+#
+set -euo pipefail
+
+ROOT="${OMNIROUTE_ROOT:-http://localhost:20128}"   # bare root: Claude Code adds /v1
+MAX_PROBES="${OMNI_MAX_PROBES:-6}"                 # cap startup cost on a bad day
+SHIM_PORT="${OMNISHIM_PORT:-20129}"
+SHIM="http://localhost:$SHIM_PORT"
+
+# Resolve through the ~/.local/bin symlink to find omnishim.py next to this file.
+SELF="$0"
+while [ -L "$SELF" ]; do SELF="$(readlink "$SELF")"; done
+HERE="$(cd "$(dirname "$SELF")" && pwd)"
+
+die() { printf '\033[91m%s\033[0m\n' "$*" >&2; exit 1; }
+note() { printf '\033[2m%s\033[0m\n' "$*" >&2; }
+
+# ── api key ──────────────────────────────────────────────────────────────
+# Env wins; otherwise take it from a config file if one exists. The local
+# gateway ignores the value, but Claude Code insists on something being set.
+if [[ -z "${OMNIROUTE_API_KEY:-}" && -f "$HOME/.config/claude-omniroute.env" ]]; then
+  set -a; . "$HOME/.config/claude-omniroute.env"; set +a
+fi
+TOKEN="${OMNIROUTE_API_KEY:-omniroute-local}"
+
+# ── the gateway has to be up ─────────────────────────────────────────────
+curl -sf -m 5 "$ROOT/v1/models" -o /dev/null 2>/dev/null || die \
+"OmniRoute is not answering at $ROOT
+
+Start it in another terminal, then try again:
+
+    omniroute"
+
+# ── a forced model? first arg with a slash that isn't a flag ─────────────
+FORCED=""
+if [[ $# -gt 0 && "$1" != -* && "$1" == */* ]]; then
+  FORCED="$1"; shift
+fi
+
+pick_ok() {
+  # Probe with a real tool schema, not a bare "hi". Several models answer plain
+  # chat happily and then 500 the moment a tools array shows up, which would
+  # drop you into a Claude Code session that dies on its first tool call.
+  # max_tokens has to leave room for a reasoning model to think *and* emit the
+  # call, or it stops at the length limit and looks broken.
+  curl -sf -m 25 "$ROOT/v1/chat/completions" \
+    -H 'Content-Type: application/json' \
+    -d "{\"model\":\"$1\",\"stream\":false,\"max_tokens\":256,
+         \"tools\":[{\"type\":\"function\",\"function\":{\"name\":\"ping\",
+           \"description\":\"Ping a host\",\"parameters\":{\"type\":\"object\",
+           \"properties\":{\"host\":{\"type\":\"string\"}},\"required\":[\"host\"]}}}],
+         \"messages\":[{\"role\":\"user\",\"content\":\"Use the ping tool on example.com\"}]}" \
+    -o /dev/null 2>/dev/null
+}
+
+if [[ -n "$FORCED" ]]; then
+  MODEL="$FORCED"
+  note "→ forced $MODEL (not checked)"
+else
+  note "→ checking models…"
+
+  # Claude Code is entirely tool-driven, so only tool-capable models qualify.
+  # aug/* are the real Claude models — prefer them, but they need the Auggie
+  # CLI, so only rank them first when that is actually installed.
+  HAVE_AUGGIE=0; command -v auggie >/dev/null 2>&1 && HAVE_AUGGIE=1
+  CANDIDATES=$(curl -sf -m 8 "$ROOT/v1/models" | HAVE_AUGGIE=$HAVE_AUGGIE python3 -c '
+import json, os, sys
+rank = {"aug": 0 if os.environ["HAVE_AUGGIE"] == "1" else 3, "oc": 1, "mcode": 2, "pepper": 2}
+out = []
+for m in json.load(sys.stdin)["data"]:
+    mid = m.get("id", "")
+    if mid.startswith("auto/"):          # combos fall through to dead providers
+        continue
+    if not m.get("capabilities", {}).get("tool_calling"):
+        continue
+    out.append((rank.get(mid.split("/")[0], 4), mid))
+print("\n".join(mid for _, mid in sorted(out)))
+') || die "Could not read the model list from $ROOT"
+
+  [[ -n "$CANDIDATES" ]] || die "No tool-capable models offered by $ROOT"
+
+  MODEL=""
+  n=0
+  while IFS= read -r m; do
+    [[ -z "$m" ]] && continue
+    n=$((n + 1))
+    (( n > MAX_PROBES )) && break
+    if pick_ok "$m"; then
+      printf '\033[2m  %s  \033[92m✓\033[0m\n' "$m" >&2
+      MODEL="$m"; break
+    fi
+    printf '\033[2m  %s  ✗\033[0m\n' "$m" >&2
+  done <<< "$CANDIDATES"
+
+  [[ -n "$MODEL" ]] || die \
+"None of the first $MAX_PROBES tool-capable models responded.
+
+Free providers rate-limit hard — wait a minute and retry, or check the
+dashboard at $ROOT. Install the Auggie CLI (\`auggie login\`) to unlock
+the aug/* Claude models."
+fi
+
+# ── the shim, so /model can list every OmniRoute model ───────────────────
+# Claude Code's picker ignores any model id that doesn't start with "claude",
+# so pointing it straight at OmniRoute shows nothing but the built-in aliases.
+# omnishim.py renames the ids for the picker and translates them back on the
+# way in. Set OMNI_NO_SHIM=1 to connect to OmniRoute directly instead.
+BASE="$ROOT"
+if [[ -z "${OMNI_NO_SHIM:-}" && -f "$HERE/omnishim.py" ]]; then
+  if ! curl -sf -m 3 "$SHIM/v1/models" -o /dev/null 2>/dev/null; then
+    OMNIROUTE_ROOT="$ROOT" OMNISHIM_PORT="$SHIM_PORT" \
+      nohup python3 "$HERE/omnishim.py" >/tmp/omnishim.log 2>&1 &
+    for _ in $(seq 20); do
+      curl -sf -m 2 "$SHIM/v1/models" -o /dev/null 2>/dev/null && break
+      sleep 0.25
+    done
+  fi
+  if curl -sf -m 3 "$SHIM/v1/models" -o /dev/null 2>/dev/null; then
+    BASE="$SHIM"
+    # Claude Code assumes 200K for a model it doesn't know. Add "[1m]" when this
+    # model really has a million-token window, so the session is budgeted for it.
+    ONEM=$(curl -sf -m 6 "$ROOT/v1/models" | MODEL="$MODEL" python3 -c '
+import json, os, sys
+want = os.environ["MODEL"]
+for m in json.load(sys.stdin)["data"]:
+    if m.get("id") == want:
+        print("1" if (m.get("context_length") or 0) >= 1_000_000 else "")
+        break
+' 2>/dev/null || echo "")
+    MODEL="claude-omni-${MODEL//\//__}"   # picker-visible form of the same model
+    [[ -n "$ONEM" ]] && { MODEL="${MODEL}[1m]"; note "  1M context enabled"; }
+    export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1
+  else
+    note "  (shim failed to start — /model will show aliases only; see /tmp/omnishim.log)"
+  fi
+fi
+
+# ── hand off to Claude Code ──────────────────────────────────────────────
+export ANTHROPIC_BASE_URL="$BASE"
+export ANTHROPIC_AUTH_TOKEN="$TOKEN"
+export ANTHROPIC_MODEL="$MODEL"
+# Point every alias at the model we verified; a dead "small fast" model breaks
+# background work in ways that are hard to trace back.
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$MODEL"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$MODEL"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$MODEL"
+# NB: CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC is deliberately NOT set — it
+# switches off gateway model discovery, which is what fills the /model picker.
+
+note "→ launching Claude Code on $MODEL"
+exec claude "$@"
