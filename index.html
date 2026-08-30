@@ -326,20 +326,28 @@ code {
 .msg-bubble p { margin-bottom: 8px; }
 .msg-bubble p:last-child { margin-bottom: 0; }
 .msg-bubble pre {
-  margin: 10px 0;
-  padding: 10px 14px;
-  border-radius: 8px;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-radius: 10px;
   background: #16181d;
   color: #f1f5f9;
   overflow-x: auto;
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre;
+  border: 1px solid rgba(255,255,255,0.06);
 }
 .msg-bubble pre code {
-  background: transparent;
-  border: none;
-  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   color: inherit;
+  font-family: var(--mono);
+  white-space: pre;
+  word-break: normal;
+  display: block;
 }
+
 
 /* Thinking Accordion */
 .thinking-box {
@@ -771,7 +779,7 @@ const scenarios = [
     model: "auto/best-coding",
     userPrompt: "Write a clean async Python scraper using httpx and asyncio with exponential backoff.",
     thinking: "1. Target model: oc/north-mini-code-free via auto/best-coding router.\n2. Implementing Semaphore(10) to bound concurrent requests.\n3. Using httpx.AsyncClient with keepalive connection pooling.\n4. Adding exponential retry logic for HTTP 429/503 status codes.",
-    answer: "Here is a production-ready asynchronous scraper with rate limiting and exponential backoff:\n\n```python\nimport asyncio\nimport httpx\n\nasync def fetch(url: str, sem: asyncio.Semaphore, client: httpx.AsyncClient, retries: int = 3):\n    async with sem:\n        for attempt in range(retries):\n            try:\n                resp = await client.get(url, timeout=10.0)\n                if resp.status_code == 200:\n                    return resp.text\n            except (httpx.RequestError, httpx.TimeoutException):\n                await asyncio.sleep(2 ** attempt)\n        return None\n```\n\nThis pattern maximizes throughput while respecting server rate limits.",
+    answer: "Here is a clean asynchronous scraper with rate limiting and exponential backoff:\n\n```python\nimport asyncio\nimport httpx\n\nasync def fetch(url: str, sem: asyncio.Semaphore):\n    async with sem:\n        async with httpx.AsyncClient() as client:\n            resp = await client.get(url, timeout=10.0)\n            return resp.text if resp.status_code == 200 else None\n```\n\nThis pattern keeps code clean and ensures requests remain within server limits.",
     perf: "⚡ oc/north-mini-code-free · 1.1s · 134 tok/s · 268 tok"
   },
   {
@@ -876,29 +884,32 @@ function renderAssistantDemo(scen) {
   stream.appendChild(assistantRow);
   stream.scrollTop = stream.scrollHeight;
 
-  // Stream answer text
-  let words = scen.answer.split(' ');
-  let wordIdx = 0;
-  let accumulated = '';
+  // Stream answer text preserving multi-line code formatting
+  let currentLen = 0;
+  const totalLen = scen.answer.length;
+  const chunkStep = 6;
 
   const streamInterval = setInterval(() => {
     if (isPaused) return;
-    if (wordIdx < words.length) {
-      accumulated += (wordIdx > 0 ? ' ' : '') + words[wordIdx];
-      document.getElementById('demoAnswerText').innerHTML = marked.parse(accumulated);
-      wordIdx++;
+    if (currentLen < totalLen) {
+      currentLen = Math.min(totalLen, currentLen + chunkStep);
+      const textToRender = scen.answer.slice(0, currentLen);
+      document.getElementById('demoAnswerText').innerHTML = marked.parse(textToRender);
+      
+      document.querySelectorAll('#demoAnswerText pre code').forEach(el => {
+        hljs.highlightElement(el);
+      });
       stream.scrollTop = stream.scrollHeight;
     } else {
       clearInterval(streamInterval);
       document.querySelectorAll('#demoAnswerText pre code').forEach(el => {
         hljs.highlightElement(el);
       });
-      // Schedule next scenario after 6s
       if (!isPaused) {
-        demoTimer = setTimeout(() => nextScenario(), 6000);
+        demoTimer = setTimeout(() => nextScenario(), 7000);
       }
     }
-  }, 35);
+  }, 25);
 }
 
 function escapeHtml(str) {
