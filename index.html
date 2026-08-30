@@ -115,9 +115,7 @@ code {
 .nav-in { display: flex; align-items: center; gap: 11px; height: 58px; }
 .nav-icon {
   width: 28px; height: 28px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 15px; box-shadow: 0 2px 8px var(--accent-glow);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 .nav-name { font-weight: 600; font-size: 15.5px; letter-spacing: -0.015em; }
 .nav-ver {
@@ -164,10 +162,8 @@ code {
   pointer-events: none;
 }
 .hero-icon {
-  width: 72px; height: 72px; border-radius: 18px; margin: 0 auto;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 34px; box-shadow: var(--shadow-lg);
+  width: 76px; height: 76px; border-radius: 18px; margin: 0 auto;
+  box-shadow: var(--shadow-lg); display: block;
 }
 .hero h1 { margin: 24px auto 0; max-width: 17ch; }
 .hero .lede { margin: 20px auto 0; max-width: 58ch; }
@@ -199,19 +195,24 @@ code {
 
 .win-status-badge {
   display: flex; align-items: center; gap: 6px; font-size: 11.5px;
-  color: var(--ink-soft); font-family: var(--mono);
+  color: var(--green); font-family: var(--mono); font-weight: 600;
 }
 .status-indicator {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--green); box-shadow: 0 0 6px rgba(15,138,95,.4);
+  animation: pulse 2s infinite;
 }
-.status-indicator.offline { background: var(--amber); box-shadow: 0 0 6px rgba(178,106,0,.4); }
 
-/* ── Interactive Chat Playground Inside Window ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.15); }
+}
+
+/* ── Interactive Autoplay Chat Presentation ── */
 .chat-app {
   display: flex;
   flex-direction: column;
-  height: 540px;
+  height: 520px;
   background: #ffffff;
 }
 
@@ -234,27 +235,25 @@ code {
 .model-picker-label {
   font-size: 12px; font-weight: 600; color: var(--ink-soft);
 }
-.model-select {
+.model-display-pill {
   font-family: var(--mono);
   font-size: 12px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: #ffffff;
-  color: var(--ink);
-  outline: none;
-  cursor: pointer;
+  color: var(--accent-deep);
+  font-weight: 600;
 }
-.model-select:focus { border-color: var(--accent); }
 
-.chat-pill-options {
+.scenario-pill-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
-.chat-pill {
-  font-size: 11px;
-  padding: 3px 9px;
+.scenario-pill {
+  font-size: 11.5px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: rgba(22, 24, 29, 0.05);
   color: var(--ink-soft);
@@ -263,7 +262,8 @@ code {
   border: 1px solid transparent;
   transition: all .15s ease;
 }
-.chat-pill.active {
+.scenario-pill:hover { background: rgba(22, 24, 29, 0.09); }
+.scenario-pill.active {
   background: rgba(79, 70, 229, 0.12);
   color: var(--accent);
   border-color: rgba(79, 70, 229, 0.25);
@@ -280,43 +280,7 @@ code {
   background: #ffffff;
 }
 
-/* Prompt Starters */
-.starters-wrap {
-  margin: auto;
-  text-align: center;
-  max-width: 580px;
-  padding: 20px 10px;
-}
-.starters-title {
-  font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--ink);
-}
-.starters-sub {
-  font-size: 13px; color: var(--ink-soft); margin-bottom: 18px; line-height: 1.45;
-}
-.starters-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left;
-}
-@media (max-width: 600px) { .starters-grid { grid-template-columns: 1fr; } }
-.starter-btn {
-  padding: 12px 14px;
-  background: var(--bg-tint);
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  font-size: 12.5px;
-  color: var(--ink);
-  cursor: pointer;
-  transition: all .2s ease;
-  line-height: 1.4;
-}
-.starter-btn:hover {
-  background: #ffffff;
-  border-color: var(--accent);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-.starter-btn b { display: block; font-size: 12.5px; margin-bottom: 2px; color: var(--accent); }
-
-/* Messages inside stream */
+/* Message Rows */
 .msg-row {
   display: flex;
   gap: 10px;
@@ -324,7 +288,7 @@ code {
 }
 .msg-row.user { justify-content: flex-end; }
 .msg-bubble {
-  max-width: 84%;
+  max-width: 86%;
   padding: 12px 16px;
   border-radius: 14px;
   font-size: 13.5px;
@@ -341,6 +305,21 @@ code {
   border: 1px solid var(--line-soft);
   border-top-left-radius: 4px;
   color: var(--ink);
+}
+
+/* Typing Caret Animation */
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: -2px;
+  animation: blink 0.9s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* Markdown typography in bubble */
@@ -362,12 +341,12 @@ code {
   color: inherit;
 }
 
-/* Thinking accordion */
+/* Thinking Accordion */
 .thinking-box {
   background: rgba(79,70,229,.05);
   border: 1px solid rgba(79,70,229,.18);
   border-radius: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   overflow: hidden;
   font-size: 12px;
 }
@@ -398,54 +377,39 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
   font-family: var(--mono);
   font-size: 10.5px;
   color: var(--ink-faint);
   background: #ffffff;
   border: 1px solid var(--line-soft);
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
-/* Chat Input Bar */
-.chat-input-bar {
-  padding: 12px 16px;
+/* Demo Control Footer */
+.demo-footer-bar {
+  padding: 10px 16px;
   border-top: 1px solid var(--line);
   background: #fafafa;
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
   align-items: center;
+  font-size: 12px;
+  color: var(--ink-faint);
 }
-.chat-input-field {
-  flex: 1;
-  background: #ffffff;
+.demo-playback-btn {
+  background: rgba(22, 24, 29, 0.06);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 9px 14px;
-  font-family: var(--sans);
-  font-size: 13.5px;
-  color: var(--ink);
-  outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-.chat-input-field:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-}
-.chat-send-btn {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 9px 18px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background .15s ease, transform .15s ease;
+  color: var(--ink);
+  transition: all .15s ease;
 }
-.chat-send-btn:hover { background: var(--accent-deep); transform: translateY(-1px); }
-.chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.demo-playback-btn:hover { background: rgba(22, 24, 29, 0.1); }
 
 /* --------------------------------------------------------------- sections */
 section { padding: clamp(64px, 9vw, 112px) 0; }
@@ -554,11 +518,11 @@ footer {
     <span class="nav-name">OmniRoute</span>
     <span class="nav-ver">v1.0</span>
     <div class="nav-links">
-      <a href="#playground" class="opt">Live Chat</a>
+      <a href="#demo" class="opt">Live Demo</a>
       <a href="#features" class="opt">Features</a>
       <a href="#code" class="opt">Integration</a>
       <a href="https://github.com/rohitshidid/omiroute-chat" target="_blank" class="opt">GitHub</a>
-      <a href="#playground" class="btn btn-sm btn-fill">Try Live Chat ↓</a>
+      <a href="#demo" class="btn btn-sm btn-fill">Watch Demo ↓</a>
     </div>
   </div>
 </nav>
@@ -572,87 +536,55 @@ footer {
     Automatic provider failover, streaming Server-Sent Events, thinking scratchpads, and 1M context windows.
   </p>
   <div class="hero-cta reveal" style="--i:3">
-    <a href="#playground" class="btn btn-lg btn-fill">Try the Live Chat <span class="arrow">↓</span></a>
+    <a href="#demo" class="btn btn-lg btn-fill">Watch Interactive Demo <span class="arrow">↓</span></a>
     <a href="https://github.com/rohitshidid/omiroute-chat" target="_blank" class="btn btn-lg btn-ghost">View on GitHub</a>
   </div>
   <div class="hero-note reveal" style="--i:4">
     <code>pip install -r requirements.txt</code> · <code>python3 app.py</code>
   </div>
 
-  <!-- Interactive macOS Window Stage -->
-  <div class="stage reveal" style="--i:5" id="playground">
+  <!-- Interactive macOS Window Stage (Autoplay Demo) -->
+  <div class="stage reveal" style="--i:5" id="demo">
     <div class="win">
       <div class="win-bar">
         <div class="win-traffic">
           <i></i><i></i><i></i>
         </div>
-        <div class="win-title">omniroute — live test console</div>
+        <div class="win-title">omniroute — live simulation showcase</div>
         <div class="win-status-badge">
-          <div class="status-indicator" id="gw-indicator"></div>
-          <span id="gw-label">Checking gateway…</span>
+          <div class="status-indicator"></div>
+          <span>● Live Gateway Demo</span>
         </div>
       </div>
 
-      <!-- Live Chat Interface -->
+      <!-- Live Chat Autoplay Presentation -->
       <div class="chat-app">
-        <!-- Control Bar -->
+        <!-- Scenario Control Bar -->
         <div class="chat-controls-bar">
           <div class="model-picker-group">
-            <span class="model-picker-label">Model:</span>
-            <select class="model-select" id="modelSelect" onchange="onModelChange()">
-              <option value="auto/best-chat">auto/best-chat (Smart Router)</option>
-              <option value="auto/best-coding">auto/best-coding (Coding Specialist)</option>
-              <option value="oc/mimo-v2.5-free">oc/mimo-v2.5-free (1M Context · Free)</option>
-              <option value="oc/north-mini-code-free">oc/north-mini-code-free (Free)</option>
-              <option value="oc/nemotron-3-ultra-free">oc/nemotron-3-ultra-free (Free)</option>
-              <option value="aug/opus4.8">aug/opus4.8 (Claude Opus)</option>
-              <option value="tllm/gemini_3_pro">tllm/gemini_3_pro (1M Context)</option>
-            </select>
+            <span class="model-picker-label">Active Router:</span>
+            <div class="model-display-pill" id="demoModelPill">auto/best-coding</div>
           </div>
 
-          <div class="chat-pill-options">
-            <div class="chat-pill active" id="pill-stream" onclick="toggleChatOption('stream')">⚡ Stream SSE</div>
-            <div class="chat-pill active" id="pill-think" onclick="toggleChatOption('think')">🧠 Show Thinking</div>
-            <div class="chat-pill" onclick="clearLiveChat()">🧹 Clear</div>
+          <div class="scenario-pill-group">
+            <div class="scenario-pill active" id="scen-0" onclick="switchScenario(0)">🐍 Async Scraper</div>
+            <div class="scenario-pill" id="scen-1" onclick="switchScenario(1)">🧠 Deep Reasoning</div>
+            <div class="scenario-pill" id="scen-2" onclick="switchScenario(2)">⚡ Multi-Model Compare</div>
           </div>
         </div>
 
         <!-- Chat Messages Stream -->
-        <div class="chat-stream-box" id="chatStream">
-          <div class="starters-wrap" id="startersWrap">
-            <div class="starters-title">Test the OmniRoute Gateway Live</div>
-            <p class="starters-sub">Click a prompt below or type your own question to see dynamic model routing and streaming response metrics.</p>
-            <div class="starters-grid">
-              <button class="starter-btn" onclick="sendStarter('Write an async Python crawler using httpx and asyncio with exponential backoff.')">
-                <b>🐍 Async Python Crawler</b>
-                Clean scraper with backoff and concurrency limit
-              </button>
-              <button class="starter-btn" onclick="sendStarter('Solve this step-by-step: If 5 machines make 5 widgets in 5 minutes, how long do 100 machines take to make 100 widgets? Explain your thinking.')">
-                <b>🧠 Logic & Reasoning</b>
-                Test step-by-step thinking scratchpad extraction
-              </button>
-              <button class="starter-btn" onclick="sendStarter('Compare Claude 3.7 Sonnet, DeepSeek V3, and Gemini 2.0 Flash in 3 bullet points.')">
-                <b>⚡ Multi-Model Compare</b>
-                Quick architecture and token speed comparison
-              </button>
-              <button class="starter-btn" onclick="sendStarter('Write a clean glassmorphic CSS card component with hover micro-animations.')">
-                <b>🎨 Modern CSS Component</b>
-                Production-ready glassmorphic UI card
-              </button>
-            </div>
-          </div>
+        <div class="chat-stream-box" id="demoStream">
+          <!-- Populated live via JS animation -->
         </div>
 
-        <!-- Input Bar -->
-        <div class="chat-input-bar">
-          <input
-            type="text"
-            id="chatInput"
-            class="chat-input-field"
-            placeholder="Type a prompt or test a question… (Press Enter)"
-            onkeydown="if(event.key === 'Enter') sendUserMessage()"
-          >
-          <button class="chat-send-btn" id="sendBtn" onclick="sendUserMessage()">Send</button>
+        <!-- Footer Control Bar -->
+        <div class="demo-footer-bar">
+          <span>Simulation Showcase · Switching scenarios automatically</span>
+          <div>
+            <button class="demo-playback-btn" id="pauseBtn" onclick="togglePauseDemo()">⏸ Pause</button>
+            <button class="demo-playback-btn" onclick="restartCurrentScenario()">🔄 Replay</button>
+          </div>
         </div>
       </div>
     </div>
@@ -772,7 +704,7 @@ for chunk in client.stream([{"role": "user", "content": "Hello!"}], model="auto/
       <strong>OmniRoute</strong> — Intelligent AI Gateway & Web Suite.
     </div>
     <div class="foot-links">
-      <a href="#playground">Live Chat</a>
+      <a href="#demo">Live Demo</a>
       <a href="#features">Features</a>
       <a href="#code">API</a>
       <a href="https://github.com/rohitshidid/omiroute-chat" target="_blank">GitHub Repository</a>
@@ -832,238 +764,141 @@ function switchCodeTab(tab) {
 }
 
 // -------------------------------------------------------------
-// Interactive Chat Console Logic
+// Autoplay Interactive Demo Engine
 // -------------------------------------------------------------
-let enableStream = true;
-let enableThinking = true;
-let isGenerating = false;
-let liveConversation = [];
+const scenarios = [
+  {
+    model: "auto/best-coding",
+    userPrompt: "Write a clean async Python scraper using httpx and asyncio with exponential backoff.",
+    thinking: "1. Target model: oc/north-mini-code-free via auto/best-coding router.\n2. Implementing Semaphore(10) to bound concurrent requests.\n3. Using httpx.AsyncClient with keepalive connection pooling.\n4. Adding exponential retry logic for HTTP 429/503 status codes.",
+    answer: "Here is a production-ready asynchronous scraper with rate limiting and exponential backoff:\n\n```python\nimport asyncio\nimport httpx\n\nasync def fetch(url: str, sem: asyncio.Semaphore, client: httpx.AsyncClient, retries: int = 3):\n    async with sem:\n        for attempt in range(retries):\n            try:\n                resp = await client.get(url, timeout=10.0)\n                if resp.status_code == 200:\n                    return resp.text\n            except (httpx.RequestError, httpx.TimeoutException):\n                await asyncio.sleep(2 ** attempt)\n        return None\n```\n\nThis pattern maximizes throughput while respecting server rate limits.",
+    perf: "⚡ oc/north-mini-code-free · 1.1s · 134 tok/s · 268 tok"
+  },
+  {
+    model: "oc/mimo-v2.5-free (1M)",
+    userPrompt: "Solve this logic puzzle: If 5 machines make 5 widgets in 5 minutes, how long do 100 machines take to make 100 widgets? Explain your thinking.",
+    thinking: "1. Calculating individual machine output rate.\n2. 1 machine produces 1 widget in 5 minutes.\n3. 100 machines running in parallel will produce 100 widgets in exactly 5 minutes.\n4. The total elapsed time remains invariant under parallel scaling.",
+    answer: "It takes **5 minutes**.\n\n### **Explanation:**\n* **Rate per machine:** If 5 machines make 5 widgets in 5 minutes, each machine makes 1 widget in 5 minutes.\n* **Parallel execution:** 100 machines running simultaneously will each produce 1 widget in **5 minutes**, yielding 100 widgets in total.",
+    perf: "⚡ oc/mimo-v2.5-free · 0.8s · 98 tok/s · 118 tok"
+  },
+  {
+    model: "auto/best-chat",
+    userPrompt: "Compare Claude 3.7 Sonnet, DeepSeek V3, and Gemini 2.0 Flash in 3 bullet points.",
+    thinking: "1. Analyzing benchmark strengths and latency profiles across providers.\n2. Claude 3.7 Sonnet: Premier code architecture & extended thinking.\n3. DeepSeek V3: Open weights efficiency and high token velocity.\n4. Gemini 2.0 Flash: Millisecond latency and 1M multimodal context.",
+    answer: "* **Claude 3.7 Sonnet:** Premier coding precision and deep analytical reasoning with hybrid thinking modes.\n* **DeepSeek V3 / R1:** High-speed open-weights intelligence with industry-leading throughput and low latency.\n* **Gemini 2.0 Flash:** Ultra-fast multimodal processing with native 1,000,000+ token context windows.",
+    perf: "⚡ auto/best-chat · 0.9s · 122 tok/s · 142 tok"
+  }
+];
+
+let currentScenarioIndex = 0;
+let isPaused = false;
+let demoTimer = null;
 
 window.addEventListener('DOMContentLoaded', () => {
-  checkGatewayStatus();
-  loadModelsList();
+  startScenario(0);
 });
 
-async function checkGatewayStatus() {
-  const indicator = document.getElementById('gw-indicator');
-  const label = document.getElementById('gw-label');
-  try {
-    const res = await fetch('/api/health');
-    const data = await res.json();
-    if (data.gateway_connected) {
-      indicator.className = 'status-indicator';
-      label.textContent = `Gateway Live (${data.models_count || 77} models)`;
+function switchScenario(index) {
+  clearTimeout(demoTimer);
+  currentScenarioIndex = index;
+  document.querySelectorAll('.scenario-pill').forEach((p, i) => {
+    p.classList.toggle('active', i === index);
+  });
+  startScenario(index);
+}
+
+function togglePauseDemo() {
+  isPaused = !isPaused;
+  const btn = document.getElementById('pauseBtn');
+  btn.textContent = isPaused ? "▶ Resume" : "⏸ Pause";
+  if (!isPaused) {
+    demoTimer = setTimeout(() => nextScenario(), 3000);
+  }
+}
+
+function restartCurrentScenario() {
+  clearTimeout(demoTimer);
+  startScenario(currentScenarioIndex);
+}
+
+function nextScenario() {
+  if (isPaused) return;
+  currentScenarioIndex = (currentScenarioIndex + 1) % scenarios.length;
+  switchScenario(currentScenarioIndex);
+}
+
+function startScenario(index) {
+  const scen = scenarios[index];
+  document.getElementById('demoModelPill').textContent = scen.model;
+  
+  const stream = document.getElementById('demoStream');
+  stream.innerHTML = '';
+
+  // 1. Type User Message
+  const userRow = document.createElement('div');
+  userRow.className = 'msg-row user';
+  userRow.innerHTML = `<div class="msg-bubble"><span id="userTypingText"></span><span class="caret" id="userCaret"></span></div>`;
+  stream.appendChild(userRow);
+
+  let charIdx = 0;
+  const typeInterval = setInterval(() => {
+    if (isPaused) return;
+    if (charIdx < scen.userPrompt.length) {
+      document.getElementById('userTypingText').textContent += scen.userPrompt[charIdx];
+      charIdx++;
     } else {
-      indicator.className = 'status-indicator offline';
-      label.textContent = 'Gateway Offline (Standby)';
+      clearInterval(typeInterval);
+      const caret = document.getElementById('userCaret');
+      if (caret) caret.style.display = 'none';
+      setTimeout(() => renderAssistantDemo(scen), 400);
     }
-  } catch (err) {
-    indicator.className = 'status-indicator offline';
-    label.textContent = 'Server Standby';
-  }
+  }, 18);
 }
 
-async function loadModelsList() {
-  try {
-    const res = await fetch('/api/models');
-    const data = await res.json();
-    const select = document.getElementById('modelSelect');
-    if (data.models && data.models.length > 0) {
-      select.innerHTML = '';
-      data.models.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        const tag = m.is_1m ? ' (1M)' : (m.is_free ? ' (Free)' : '');
-        opt.textContent = `${m.name || m.id}${tag}`;
-        select.appendChild(opt);
-      });
-      select.value = 'auto/best-chat';
-    }
-  } catch (err) {}
-}
+function renderAssistantDemo(scen) {
+  const stream = document.getElementById('demoStream');
+  const assistantRow = document.createElement('div');
+  assistantRow.className = 'msg-row assistant';
 
-function onModelChange() {}
-
-function toggleChatOption(opt) {
-  if (opt === 'stream') {
-    enableStream = !enableStream;
-    document.getElementById('pill-stream').classList.toggle('active', enableStream);
-  } else if (opt === 'think') {
-    enableThinking = !enableThinking;
-    document.getElementById('pill-think').classList.toggle('active', enableThinking);
-  }
-}
-
-function sendStarter(text) {
-  document.getElementById('chatInput').value = text;
-  sendUserMessage();
-}
-
-function clearLiveChat() {
-  liveConversation = [];
-  const stream = document.getElementById('chatStream');
-  stream.innerHTML = `
-    <div class="starters-wrap" id="startersWrap">
-      <div class="starters-title">Test the OmniRoute Gateway Live</div>
-      <p class="starters-sub">Click a prompt below or type your own question to see dynamic model routing and streaming response metrics.</p>
-      <div class="starters-grid">
-        <button class="starter-btn" onclick="sendStarter('Write an async Python crawler using httpx and asyncio with exponential backoff.')">
-          <b>🐍 Async Python Crawler</b>
-          Clean scraper with backoff and concurrency limit
-        </button>
-        <button class="starter-btn" onclick="sendStarter('Solve this step-by-step: If 5 machines make 5 widgets in 5 minutes, how long do 100 machines take to make 100 widgets? Explain your thinking.')">
-          <b>🧠 Logic & Reasoning</b>
-          Test step-by-step thinking scratchpad extraction
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-async function sendUserMessage() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text || isGenerating) return;
-
-  const starters = document.getElementById('startersWrap');
-  if (starters) starters.style.display = 'none';
-
-  input.value = '';
-  appendMessage('user', text);
-  liveConversation.push({ role: 'user', content: text });
-
-  isGenerating = true;
-  document.getElementById('sendBtn').disabled = true;
-
-  const model = document.getElementById('modelSelect').value;
-  const assistantBubble = appendAssistantPlaceholder();
-
-  let fullContent = '';
-  let fullReasoning = '';
-  let servedModel = model;
-
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: liveConversation,
-        model: model,
-        stream: enableStream
-      })
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    if (enableStream) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const jsonStr = trimmed.slice(5).trim();
-          if (jsonStr === '[DONE]') continue;
-
-          try {
-            const data = JSON.parse(jsonStr);
-            if (data.type === 'reasoning' && enableThinking) {
-              fullReasoning += data.delta;
-              assistantBubble.thinkingBox.style.display = 'block';
-              assistantBubble.thinkingContent.textContent = fullReasoning;
-            } else if (data.type === 'content') {
-              fullContent += data.delta;
-              assistantBubble.content.innerHTML = marked.parse(fullContent);
-            } else if (data.type === 'meta') {
-              servedModel = data.model || servedModel;
-              const usage = data.usage || {};
-              const latency = data.latency || 0;
-              const promptTok = usage.prompt_tokens || 0;
-              const doneTok = usage.completion_tokens || 0;
-              const tokRate = doneTok && latency > 0 ? ` · ${(doneTok / latency).toFixed(0)} tok/s` : '';
-
-              assistantBubble.perfChip.style.display = 'inline-flex';
-              assistantBubble.perfChip.textContent = `⚡ ${servedModel} · ${latency}s · ${promptTok + doneTok} tok${tokRate}`;
-            } else if (data.type === 'error') {
-              assistantBubble.content.innerHTML += `<div style="color:var(--red);margin-top:6px;">⚠️ ${data.message}</div>`;
-            }
-          } catch (e) {}
-        }
-        scrollStreamToBottom();
-      }
-    } else {
-      const data = await res.json();
-      fullContent = (data.choices && data.choices[0]?.message?.content) || '';
-      assistantBubble.content.innerHTML = marked.parse(fullContent);
-      servedModel = data.model || servedModel;
-      assistantBubble.perfChip.style.display = 'inline-flex';
-      assistantBubble.perfChip.textContent = `⚡ ${servedModel}`;
-    }
-
-    if (fullContent.trim()) {
-      liveConversation.push({ role: 'assistant', content: fullContent });
-    }
-  } catch (err) {
-    assistantBubble.content.innerHTML += `<div style="color:var(--red);margin-top:6px;">❌ Gateway error: ${err.message}. Is omniroute running?</div>`;
-  } finally {
-    isGenerating = false;
-    document.getElementById('sendBtn').disabled = false;
-    scrollStreamToBottom();
-  }
-}
-
-function appendMessage(role, text) {
-  const stream = document.getElementById('chatStream');
-  const row = document.createElement('div');
-  row.className = `msg-row ${role}`;
-  row.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div>`;
-  stream.appendChild(row);
-  scrollStreamToBottom();
-}
-
-function appendAssistantPlaceholder() {
-  const stream = document.getElementById('chatStream');
-  const row = document.createElement('div');
-  row.className = 'msg-row assistant';
-
-  const thinkId = 'think-' + Date.now();
-  row.innerHTML = `
+  assistantRow.innerHTML = `
     <div class="msg-bubble">
-      <div class="thinking-box" id="${thinkId}" style="display:none;">
-        <div class="thinking-head" onclick="document.getElementById('${thinkId}').classList.toggle('closed')">
+      <div class="thinking-box" id="demoThinkingBox">
+        <div class="thinking-head" onclick="this.parentElement.classList.toggle('closed')">
           <span>🧠 Thinking Process</span>
           <span>▼</span>
         </div>
-        <div class="thinking-content"></div>
+        <div class="thinking-content" id="demoThinkingText">${escapeHtml(scen.thinking)}</div>
       </div>
-      <div class="msg-text" style="color:var(--ink-faint);">Thinking…</div>
-      <div class="perf-chip" style="display:none;"></div>
+      <div class="msg-text" id="demoAnswerText"></div>
+      <div class="perf-chip" id="demoPerfChip">${scen.perf}</div>
     </div>
   `;
-  stream.appendChild(row);
-  scrollStreamToBottom();
-
-  return {
-    row: row,
-    content: row.querySelector('.msg-text'),
-    thinkingBox: row.querySelector('.thinking-box'),
-    thinkingContent: row.querySelector('.thinking-content'),
-    perfChip: row.querySelector('.perf-chip')
-  };
-}
-
-function scrollStreamToBottom() {
-  const stream = document.getElementById('chatStream');
+  stream.appendChild(assistantRow);
   stream.scrollTop = stream.scrollHeight;
+
+  // Stream answer text
+  let words = scen.answer.split(' ');
+  let wordIdx = 0;
+  let accumulated = '';
+
+  const streamInterval = setInterval(() => {
+    if (isPaused) return;
+    if (wordIdx < words.length) {
+      accumulated += (wordIdx > 0 ? ' ' : '') + words[wordIdx];
+      document.getElementById('demoAnswerText').innerHTML = marked.parse(accumulated);
+      wordIdx++;
+      stream.scrollTop = stream.scrollHeight;
+    } else {
+      clearInterval(streamInterval);
+      document.querySelectorAll('#demoAnswerText pre code').forEach(el => {
+        hljs.highlightElement(el);
+      });
+      // Schedule next scenario after 6s
+      if (!isPaused) {
+        demoTimer = setTimeout(() => nextScenario(), 6000);
+      }
+    }
+  }, 35);
 }
 
 function escapeHtml(str) {
