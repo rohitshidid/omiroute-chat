@@ -204,29 +204,6 @@ async def get_models(base_url: Optional[str] = None, api_key: Optional[str] = No
                     }
         except Exception:
             continue
-                raw_models = res.json().get("data", [])
-                # Enhance models with category tags
-                enhanced_models = []
-                for m in raw_models:
-                    m_id = m.get("id", "")
-                    provider = m_id.split("/")[0] if "/" in m_id else "other"
-                    is_free = "free" in m_id.lower() or provider in ["oc", "auto"]
-                    is_1m = any(term in m_id.lower() for term in ["mimo", "gemini", "deepseek-v4"])
-                    enhanced_models.append({
-                        "id": m_id,
-                        "name": m.get("name") or m_id,
-                        "provider": provider,
-                        "is_free": is_free,
-                        "is_1m": is_1m,
-                        "raw": m,
-                    })
-                return {
-                    "connected": True,
-                    "count": len(enhanced_models),
-                    "models": enhanced_models,
-                }
-    except Exception as exc:
-        pass
 
     # Curated fallback catalog if gateway is offline or initializing
     fallback_models = [
