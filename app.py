@@ -101,6 +101,7 @@ app.add_middleware(
 )
 
 INDEX_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+ICON_SVG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.svg")
 
 
 class ChatMessage(BaseModel):
@@ -128,6 +129,14 @@ async def serve_index():
         {"status": "ok", "message": "OmniRoute API is running. index.html not found."},
         status_code=200,
     )
+
+
+@app.get("/icon.svg")
+async def serve_icon():
+    """Serve the vector tab icon."""
+    if os.path.exists(ICON_SVG_PATH):
+        return FileResponse(ICON_SVG_PATH, media_type="image/svg+xml")
+    return JSONResponse({"error": "Icon not found"}, status_code=404)
 
 
 @app.get("/api/health")
