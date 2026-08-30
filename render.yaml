@@ -2,13 +2,13 @@ services:
   - type: web
     name: omniroute-chat
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    buildCommand: npm install -g omniroute || true; pip install -r requirements.txt
+    startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
       - key: OMNIROUTE_BASE_URL
-        value: http://localhost:20128/v1
+        value: http://127.0.0.1:20128/v1
       - key: OMNIROUTE_API_KEY
         sync: false
       - key: OMNIROUTE_MODEL

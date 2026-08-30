@@ -38,10 +38,57 @@ def candidate_urls(base: str) -> List[str]:
     return candidates
 
 
+import shutil
+import subprocess
+import urllib.request
+from contextlib import asynccontextmanager
+
+
+def ensure_gateway_running():
+    """Ensure OmniRoute gateway is running in background if pointing locally."""
+    base = os.environ.get("OMNIROUTE_BASE_URL", DEFAULT_BASE_URL)
+    if "localhost" in base or "127.0.0.1" in base:
+        # Check if already responding
+        for candidate in candidate_urls(base):
+            try:
+                with urllib.request.urlopen(f"{candidate}/models", timeout=1.5) as res:
+                    if res.status == 200:
+                        return
+            except Exception:
+                continue
+
+        # Try to launch omniroute binary or npx
+        cmd = None
+        if shutil.which("omniroute"):
+            cmd = ["omniroute"]
+        elif shutil.which("npx"):
+            cmd = ["npx", "-y", "omniroute"]
+
+        if cmd:
+            try:
+                print(f"⚡ Auto-starting OmniRoute gateway daemon via {' '.join(cmd)}...")
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            except Exception as e:
+                print(f"Warning: Could not auto-start omniroute: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ensure_gateway_running()
+    yield
+
+
 app = FastAPI(
     title="OmniRoute Web Chat",
     description="Web chat interface and streaming gateway proxy for OmniRoute",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Enable CORS for cross-domain flexibility
