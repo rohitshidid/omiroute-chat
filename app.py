@@ -21,10 +21,22 @@ from pydantic import BaseModel, Field
 # Load environment variables
 load_dotenv()
 
-DEFAULT_BASE_URL = os.environ.get("OMNIROUTE_BASE_URL", "http://localhost:20128/v1").rstrip("/")
+DEFAULT_BASE_URL = os.environ.get("OMNIROUTE_BASE_URL", "http://127.0.0.1:20128/v1").rstrip("/")
 DEFAULT_API_KEY = os.environ.get("OMNIROUTE_API_KEY", "")
 DEFAULT_MODEL = os.environ.get("OMNIROUTE_MODEL", "auto/best-chat")
 DEFAULT_SYSTEM = os.environ.get("OMNIROUTE_SYSTEM", "")
+
+
+def candidate_urls(base: str) -> List[str]:
+    """Generate resilient fallback candidates for localhost and 127.0.0.1."""
+    base = base.rstrip("/")
+    candidates = [base]
+    if "localhost" in base:
+        candidates.append(base.replace("localhost", "127.0.0.1"))
+    elif "127.0.0.1" in base:
+        candidates.append(base.replace("127.0.0.1", "localhost"))
+    return candidates
+
 
 app = FastAPI(
     title="OmniRoute Web Chat",
@@ -77,27 +89,31 @@ async def health_check():
     base_url = os.environ.get("OMNIROUTE_BASE_URL", DEFAULT_BASE_URL)
     is_gateway_up = False
     models_count = 0
+    active_url = base_url
     api_key = os.environ.get("OMNIROUTE_API_KEY", DEFAULT_API_KEY)
 
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
-    try:
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            res = await client.get(f"{base_url}/models", headers=headers)
-            if res.status_code == 200:
-                is_gateway_up = True
-                data = res.json().get("data", [])
-                models_count = len(data)
-    except Exception:
-        is_gateway_up = False
+    for candidate in candidate_urls(base_url):
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                res = await client.get(f"{candidate}/models", headers=headers)
+                if res.status_code == 200:
+                    is_gateway_up = True
+                    data = res.json().get("data", [])
+                    models_count = len(data)
+                    active_url = candidate
+                    break
+        except Exception:
+            continue
 
     return {
         "status": "healthy",
         "timestamp": time.time(),
         "gateway_connected": is_gateway_up,
-        "gateway_url": base_url,
+        "gateway_url": active_url,
         "default_model": os.environ.get("OMNIROUTE_MODEL", DEFAULT_MODEL),
         "models_count": models_count,
         "auth_configured": bool(api_key),
@@ -114,10 +130,33 @@ async def get_models(base_url: Optional[str] = None, api_key: Optional[str] = No
     if target_key:
         headers["Authorization"] = f"Bearer {target_key}"
 
-    try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            res = await client.get(f"{target_base}/models", headers=headers)
-            if res.status_code == 200:
+    for candidate in candidate_urls(target_base):
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.get(f"{candidate}/models", headers=headers)
+                if res.status_code == 200:
+                    raw_models = res.json().get("data", [])
+                    enhanced_models = []
+                    for m in raw_models:
+                        m_id = m.get("id", "")
+                        provider = m_id.split("/")[0] if "/" in m_id else "other"
+                        is_free = "free" in m_id.lower() or provider in ["oc", "auto"]
+                        is_1m = any(term in m_id.lower() for term in ["mimo", "gemini", "deepseek-v4"])
+                        enhanced_models.append({
+                            "id": m_id,
+                            "name": m.get("name") or m_id,
+                            "provider": provider,
+                            "is_free": is_free,
+                            "is_1m": is_1m,
+                            "raw": m,
+                        })
+                    return {
+                        "connected": True,
+                        "count": len(enhanced_models),
+                        "models": enhanced_models,
+                    }
+        except Exception:
+            continue
                 raw_models = res.json().get("data", [])
                 # Enhance models with category tags
                 enhanced_models = []
@@ -194,77 +233,85 @@ async def chat_endpoint(req: ChatRequest):
     if req.max_tokens:
         payload["max_tokens"] = req.max_tokens
 
-    # Streaming mode
-    if req.stream:
         async def event_generator():
             start_time = time.time()
             served_model = target_model
             total_usage = {}
             has_error = False
 
-            try:
-                timeout = httpx.Timeout(300.0, connect=10.0)
-                async with httpx.AsyncClient(timeout=timeout) as client:
-                    async with client.stream(
-                        "POST",
-                        f"{target_base}/chat/completions",
-                        json=payload,
-                        headers=headers,
-                    ) as response:
-                        if response.status_code >= 400:
-                            error_body = await response.aread()
-                            try:
-                                err_json = json.loads(error_body.decode(errors="replace"))
-                                err_msg = err_json.get("error", {}).get("message") or str(err_json)
-                            except Exception:
-                                err_msg = error_body.decode(errors="replace")[:300] or f"HTTP {response.status_code}"
-                            yield f"data: {json.dumps({'type': 'error', 'message': f'Gateway Error ({response.status_code}): {err_msg}'})}\n\n"
-                            return
+            connected = False
+            last_err = ""
 
-                        buffer = ""
-                        async for raw_chunk in response.aiter_bytes():
-                            buffer += raw_chunk.decode("utf-8", errors="replace")
-                            lines = buffer.split("\n")
-                            buffer = lines.pop()  # Keep incomplete line in buffer
-
-                            for line in lines:
-                                line = line.strip()
-                                if not line or not line.startswith("data:"):
-                                    continue
-                                raw_data = line[5:].strip()
-                                if raw_data == "[DONE]":
-                                    continue
+            for candidate in candidate_urls(target_base):
+                try:
+                    timeout = httpx.Timeout(300.0, connect=6.0)
+                    async with httpx.AsyncClient(timeout=timeout) as client:
+                        async with client.stream(
+                            "POST",
+                            f"{candidate}/chat/completions",
+                            json=payload,
+                            headers=headers,
+                        ) as response:
+                            connected = True
+                            if response.status_code >= 400:
+                                error_body = await response.aread()
                                 try:
-                                    chunk = json.loads(raw_data)
-                                except json.JSONDecodeError:
-                                    continue
+                                    err_json = json.loads(error_body.decode(errors="replace"))
+                                    err_msg = err_json.get("error", {}).get("message") or str(err_json)
+                                except Exception:
+                                    err_msg = error_body.decode(errors="replace")[:300] or f"HTTP {response.status_code}"
+                                yield f"data: {json.dumps({'type': 'error', 'message': f'Gateway Error ({response.status_code}): {err_msg}'})}\n\n"
+                                return
 
-                                if chunk.get("model"):
-                                    served_model = chunk["model"]
-                                if chunk.get("usage"):
-                                    total_usage = chunk["usage"]
+                            buffer = ""
+                            async for raw_chunk in response.aiter_bytes():
+                                buffer += raw_chunk.decode("utf-8", errors="replace")
+                                lines = buffer.split("\n")
+                                buffer = lines.pop()  # Keep incomplete line in buffer
 
-                                choices = chunk.get("choices") or []
-                                if not choices:
-                                    continue
-                                delta = choices[0].get("delta") or {}
+                                for line in lines:
+                                    line = line.strip()
+                                    if not line or not line.startswith("data:"):
+                                        continue
+                                    raw_data = line[5:].strip()
+                                    if raw_data == "[DONE]":
+                                        continue
+                                    try:
+                                        chunk = json.loads(raw_data)
+                                    except json.JSONDecodeError:
+                                        continue
 
-                                # 1. Stream reasoning if model is thinking
-                                reasoning_delta = delta.get("reasoning_content")
-                                if reasoning_delta:
-                                    yield f"data: {json.dumps({'type': 'reasoning', 'delta': reasoning_delta})}\n\n"
+                                    if chunk.get("model"):
+                                        served_model = chunk["model"]
+                                    if chunk.get("usage"):
+                                        total_usage = chunk["usage"]
 
-                                # 2. Stream content piece
-                                content_delta = delta.get("content")
-                                if content_delta:
-                                    yield f"data: {json.dumps({'type': 'content', 'delta': content_delta})}\n\n"
+                                    choices = chunk.get("choices") or []
+                                    if not choices:
+                                        continue
+                                    delta = choices[0].get("delta") or {}
 
-            except httpx.RequestError as exc:
+                                    # 1. Stream reasoning if model is thinking
+                                    reasoning_delta = delta.get("reasoning_content")
+                                    if reasoning_delta:
+                                        yield f"data: {json.dumps({'type': 'reasoning', 'delta': reasoning_delta})}\n\n"
+
+                                    # 2. Stream content piece
+                                    content_delta = delta.get("content")
+                                    if content_delta:
+                                        yield f"data: {json.dumps({'type': 'content', 'delta': content_delta})}\n\n"
+                            break  # successfully streamed
+                except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                    last_err = str(exc)
+                    continue
+                except Exception as exc:
+                    has_error = True
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'Unexpected error: {str(exc)}'})}\n\n"
+                    break
+
+            if not connected and not has_error:
                 has_error = True
-                yield f"data: {json.dumps({'type': 'error', 'message': f'Failed to connect to OmniRoute gateway at {target_base} ({str(exc)}). Is OmniRoute running?'})}\n\n"
-            except Exception as exc:
-                has_error = True
-                yield f"data: {json.dumps({'type': 'error', 'message': f'Unexpected error: {str(exc)}'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'message': f'Cannot reach OmniRoute gateway at {target_base} ({last_err}). Please check if `omniroute` is running in your terminal.'})}\n\n"
 
             # Final metadata event
             elapsed = time.time() - start_time
@@ -283,18 +330,20 @@ async def chat_endpoint(req: ChatRequest):
         )
 
     # Non-streaming mode
-    try:
-        payload["stream"] = False
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            res = await client.post(f"{target_base}/chat/completions", json=payload, headers=headers)
-            if res.status_code >= 400:
-                raise HTTPException(status_code=res.status_code, detail=res.text)
-            return res.json()
-    except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Cannot reach OmniRoute gateway at {target_base}: {str(exc)}",
-        )
+    payload["stream"] = False
+    for candidate in candidate_urls(target_base):
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                res = await client.post(f"{candidate}/chat/completions", json=payload, headers=headers)
+                if res.status_code >= 400:
+                    raise HTTPException(status_code=res.status_code, detail=res.text)
+                return res.json()
+        except (httpx.ConnectError, httpx.TimeoutException):
+            continue
+    raise HTTPException(
+        status_code=503,
+        detail=f"Cannot reach OmniRoute gateway at {target_base}.",
+    )
 
 
 if __name__ == "__main__":
