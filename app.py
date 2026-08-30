@@ -57,9 +57,12 @@ def ensure_gateway_running():
             except Exception:
                 continue
 
-        # Try to launch omniroute binary or npx
+        # Try to launch omniroute binary from node_modules, global PATH, or npx
         cmd = None
-        if shutil.which("omniroute"):
+        local_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin", "omniroute")
+        if os.path.exists(local_bin):
+            cmd = [local_bin]
+        elif shutil.which("omniroute"):
             cmd = ["omniroute"]
         elif shutil.which("npx"):
             cmd = ["npx", "-y", "omniroute"]

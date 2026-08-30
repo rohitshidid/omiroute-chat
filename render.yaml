@@ -2,8 +2,8 @@ services:
   - type: web
     name: omniroute-chat
     runtime: python
-    buildCommand: npm install -g omniroute || true; pip install -r requirements.txt
-    startCommand: python3 -m uvicorn app:app --host 0.0.0.0 --port $PORT
+    buildCommand: npm install && pip install -r requirements.txt
+    startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
